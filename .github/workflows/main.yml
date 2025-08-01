@@ -1,4 +1,4 @@
-name: Deploy Python Function App
+name: Build and Deploy Python App
 
 on:
   push:
@@ -6,45 +6,36 @@ on:
       - main
 
 env:
-  AZURE_FUNCTIONAPP_NAME: 'MyNewParserApp'
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'
-  PYTHON_VERSION: '3.11'
-  
+  AZURE_FUNCTIONAPP_NAME: MyNewParserApp
+  PYTHON_VERSION: 3.11
+
 jobs:
   build-and-deploy:
-    runs-on: 'ubuntu-latest'
+    runs-on: ubuntu-latest
+    
     steps:
-    - name: 'Checkout GitHub Action'
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: 'Login to Azure'
-    uses: azure/login@v2
-      with:
-        creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"7629a042-e5bf-4d67-a2b7-6fef3050c0a8","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+      - name: 'Login to Azure via CLI'
+        run: |
+          az login --service-principal -u "${{ secrets.AZURE_CLIENT_ID }}" -p "${{ secrets.AZURE_CLIENT_SECRET }}" --tenant "${{ secrets.AZURE_TENANT_ID }}"
+          az account set --subscription "7629a042-e5bf-4d67-a2b7-6fef3050c0a8"
 
-    - name: Set AZURE_CLIENT_SECRET
-      run: |
-        echo "AZURE_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }}" >> $GITHUB_ENV
+      - name: 'Resolve project dependencies'
+        shell: bash
+        run: |
+          pushd '${{ github.workspace }}'
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -r requirements.txt
+          pip install azure-functions
 
-
-    - name: 'Set up Python version'
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-
-    - name: 'Resolve Project Dependencies using Pip'
-      shell: bash
-      run: |
-        pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        popd
-
-    - name: 'Run Azure Functions Action'
-      uses: Azure/functions-action@v1
-      id: fa
-      with:
-        app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-        package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-        scm-do-build-during-deployment: true
-        enable-oryx-build: true
+      - name: 'Run Azure Functions Action'
+        uses: Azure/functions-action@v1
+        id: fa
+        with:
+          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+          package: ${{ github.workspace }}
+          scm-do-build-during-deployment: true
+          enable-oryx-build: true
