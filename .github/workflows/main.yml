@@ -39,3 +39,5 @@ jobs:
           package: ${{ github.workspace }}
           scm-do-build-during-deployment: true
           enable-oryx-build: true
+        env:
+          AzureWebJobsStorage: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
