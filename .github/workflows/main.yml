@@ -21,10 +21,6 @@ jobs:
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-      - name: 'Login to Azure via CLI'
-        run: |
-          az login --service-principal -u "${{ secrets.AZURE_CLIENT_ID }}" -p "${{ secrets.AZURE_CLIENT_SECRET }}" --tenant "${{ secrets.AZURE_TENANT_ID }}"
-          az account set --subscription "7629a042-e5bf-4d67-a2b7-6fef3050c0a8"
           
       - name: 'Resolve project dependencies'
         shell: bash
