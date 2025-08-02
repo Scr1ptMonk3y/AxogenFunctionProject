@@ -1,0 +1,52 @@
+name: Build and Deploy Python App
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  AZURE_FUNCTIONAPP_NAME: MyNewParserApp
+  PYTHON_VERSION: 3.11
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          
+      - name: 'Resolve project dependencies'
+        shell: bash
+        run: |
+          pushd '${{ github.workspace }}'
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -r requirements.txt
+          pip install azure-functions
+
+      - name: 'Set Function App Settings'
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            az functionapp config appsettings set \
+              --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
+              --resource-group AxogenTest \
+              --settings "AzureWebJobsStorage=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}"
+
+      - name: 'Run Azure Functions Action'
+        uses: Azure/functions-action@v1
+        id: fa
+        with:
+          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+          package: ${{ github.workspace }}
+          scm-do-build-during-deployment: true
+          enable-oryx-build: true
+        env:
+          AzureWebJobsStorage: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
