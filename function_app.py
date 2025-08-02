@@ -5,7 +5,7 @@ import re
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
 
-@app.route(route="ExtractPatientInfo")
+@app.route(route="ExtractPatientInfo", http_auth_level=func.AuthLevel.ANONYMOUS)
 def ExtractPatientInfo(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
