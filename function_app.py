@@ -24,10 +24,11 @@ def ExtractPatientInfo(req: func.HttpRequest) -> func.HttpResponse:
              status_code=400
         )
 
-    # Use regular expressions to extract the data reliably
-    name_match = re.search(r"Name:\s*(.*)\n", document_content)
+    # Use non-greedy regular expressions to extract the data reliably
+    # The (.*?) pattern will match as little as possible until the newline character
+    name_match = re.search(r"Name:\s*(.*?)(?:\n|·)", document_content)
     age_match = re.search(r"Age:\s*(\d+)", document_content)
-    date_match = re.search(r"Date of Examination:\s*(.*)\n", document_content)
+    date_match = re.search(r"Date of Examination:\s*(.*?)(?:\n|·)", document_content)
     
     name = name_match.group(1).strip() if name_match else None
     age = age_match.group(1).strip() if age_match else None
