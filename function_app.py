@@ -1,4 +1,3 @@
-# Forcing redeployment
 import logging
 import json
 import azure.functions as func
@@ -14,36 +13,52 @@ def ExtractPatientInfo(req: func.HttpRequest) -> func.HttpResponse:
         req_body = req.get_json()
     except ValueError:
         return func.HttpResponse(
-             "Please pass a valid JSON in the request body",
-             status_code=400
+            "Please pass a valid JSON in the request body",
+            status_code=400
         )
 
-    document_content = req_body.get('content')
+    analyze_result = req_body.get('analyzeResult')
+    if not analyze_result:
+        return func.HttpResponse(
+            "Please pass a JSON with 'analyzeResult' in the request body",
+            status_code=400
+        )
+    
+    document_content = analyze_result.get('content')
     if not document_content:
         return func.HttpResponse(
-             "Please pass 'content' in the request body",
-             status_code=400
+            "Please pass 'content' within 'analyzeResult' in the request body",
+            status_code=400
         )
 
-    # Use non-greedy regular expressions to extract the data reliably
-    # The (.*?) pattern will match as little as possible until the newline character
-    name_match = re.search(r"Name:\s*(.*?)(?:\n|·)", document_content)
-    age_match = re.search(r"Age:\s*(\d+)", document_content)
-    date_match = re.search(r"Date of Examination:\s*(.*?)(?:\n|·)", document_content)
+    # Extract fields
+    name = re.search(r"Name:\s*(.*?)(?:\n|·)", document_content)
+    age = re.search(r"Age:\s*(\d+)", document_content)
+    gender = re.search(r"Gender:\s*(.*?)(?:\n|·)", document_content)
+    date = re.search(r"Date of Examination:\s*(.*?)(?:\n|·)", document_content)
+
+    # Sections: use multi-line match (re.DOTALL) and non-greedy capture
+    medical_history = re.search(r"Medical History\s*(.*?)\s*(Notes:|Donor Eligibility|Additional Comments|$)", document_content, re.DOTALL | re.IGNORECASE)
+    donor_eligibility = re.search(r"Donor Eligibility.*?\s*(.*?)\s*(Additional Comments|Notes:|$)", document_content, re.DOTALL | re.IGNORECASE)
     
-    name = name_match.group(1).strip() if name_match else None
-    age = age_match.group(1).strip() if age_match else None
-    date = date_match.group(1).strip() if date_match else None
+    notes_match = re.search(r"Notes:\s*(.*?)(?:Additional Comments|Donor Eligibility|$)", document_content, re.DOTALL | re.IGNORECASE)
+    comments_match = re.search(r"Additional Comments:\s*(.*?)(?:$)", document_content, re.DOTALL | re.IGNORECASE)
 
     # Construct the JSON response
     response_data = {
-        "name": name,
-        "age": age,
-        "date": date
+        "name": name.group(1).strip() if name else None,
+        "age": age.group(1).strip() if age else None,
+        "gender": gender.group(1).strip() if gender else None,
+        "date": date.group(1).strip() if date else None,
+        "medical_history": medical_history.group(1).strip() if medical_history else None,
+        "donor_eligibility": donor_eligibility.group(1).strip() if donor_eligibility else None,
+        "notes": notes_match.group(1).strip() if notes_match else (
+            comments_match.group(1).strip() if comments_match else None
+        )
     }
 
     return func.HttpResponse(
-        json.dumps(response_data),
+        json.dumps(response_data, indent=2),
         mimetype="application/json",
         status_code=200
     )
